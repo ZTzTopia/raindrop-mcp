@@ -3,11 +3,15 @@ from typing import Annotated, Literal
 from fastmcp import FastMCP
 from pydantic import Field
 
+from model import CollectionItem, RaindropItem
 from raindrop import (
     create_collection,
     create_raindrop,
+    create_raindrops,
     delete_collection,
     delete_collections,
+    delete_raindrop,
+    delete_raindrops,
     get_collection,
     get_collections,
     get_group,
@@ -20,10 +24,7 @@ from raindrop import (
     update_collection,
     update_raindrop,
     update_raindrops,
-    delete_raindrop,
-    delete_raindrops,
 )
-from model import CollectionItem, RaindropItem
 
 mcp = FastMCP(
     name='Raindrop MCP Server',
@@ -223,7 +224,7 @@ def raindrop_delete_collection(
 
 
 @mcp.tool(
-    description='Delete multiple collections',
+    description='Bulk delete collections',
     tags=['Collections'],
 )
 def raindrop_delete_collections(
@@ -317,6 +318,24 @@ def raindrop_create_raindrop(
         if raindrop
         else {'error': 'Failed to create raindrop.'}
     )
+
+
+# @mcp.tool(
+#     description='Bulk create raindrops',
+#     tags=['Raindrops', 'Bookmarks'],
+# )
+# def raindrop_create_raindrops(
+#     raindrops: Annotated[
+#         list[RaindropItem],
+#         Field(description='List of raindrops to create.'),
+#     ],
+# ):
+#     created_raindrops = create_raindrops(raindrops)
+#     return (
+#         [raindrop.model_dump(exclude_unset=True, exclude_none=True) for raindrop in created_raindrops]
+#         if created_raindrops
+#         else {'error': 'Failed to create raindrops.'}
+#     )
 
 
 @mcp.tool(
