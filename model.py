@@ -62,13 +62,13 @@ class CollectionItems(RaindropBaseModel):
 
 class RaindropItem(BaseModel):
     id: int = Field(alias='_id', default=None)
-    link: str
+    link: str = None
     title: str = None
     excerpt: str = None
     note: str = None
     tags: list[str] = []
     collection: Parent = None
-    collectionId: int = 0
+    collectionId: int | None = None
 
 
 class Raindrop(RaindropBaseModel):

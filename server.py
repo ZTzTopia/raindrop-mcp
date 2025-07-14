@@ -8,7 +8,6 @@ from raindrop import (
     create_raindrop,
     delete_collection,
     delete_collections,
-    delete_raindrop,
     get_collection,
     get_collections,
     get_group,
@@ -20,6 +19,8 @@ from raindrop import (
     get_user,
     update_collection,
     update_raindrop,
+    update_raindrops,
+    delete_raindrop,
 )
 from model import CollectionItem, RaindropItem
 
@@ -38,14 +39,9 @@ mcp = FastMCP(
     tags=['User'],
 )
 def raindrop_get_user():
-    """
-    Get the current user's information from Raindrop.io.
-
-    :return: User information or an error message.
-    """
     user_info = get_user()
     return (
-        user_info.model_dump_json()
+        user_info.model_dump_json(exclude_unset=True, exclude_none=True)
         if user_info
         else {'error': 'Failed to retrieve user information.'}
     )
@@ -56,14 +52,13 @@ def raindrop_get_user():
     tags=['Collections'],
 )
 def raindrop_get_total_collections(
-    collection_type: Literal['all', 'unsorted', 'trash'] = 'all',
+    collection_type: Annotated[
+        Literal['all', 'root', 'ungrouped', 'trash'],
+        Field(
+            description='Type of collections to count: "all" for all collections, "root" for root collections, "ungrouped" for ungrouped collections, "trash" for trash collections.'
+        ),
+    ] = 'all',
 ):
-    """
-    Get the total number of collections for a specific type.
-
-    :param collection_type: Type of collections to count ('all', 'unsorted', 'trash').
-    :return: Total count of collections.
-    """
     total_collections = get_total_collections(collection_type)
     return total_collections
 
@@ -73,14 +68,9 @@ def raindrop_get_total_collections(
     tags=['Groups'],
 )
 def raindrop_get_groups():
-    """
-    Get the list of groups associated with the current user.
-
-    :return: List of groups or an error message.
-    """
     groups = get_groups()
     return (
-        [group.model_dump() for group in groups]
+        [group.model_dump(exclude_unset=True, exclude_none=True) for group in groups]
         if groups
         else {'error': 'No groups found.'}
     )
@@ -90,15 +80,15 @@ def raindrop_get_groups():
     description='Get a specific group by name',
     tags=['Groups'],
 )
-def raindrop_get_group(name: str):
-    """
-    Get a specific group by name.
-
-    :param name: Name of the group to retrieve.
-    :return: Group information or an error message.
-    """
+def raindrop_get_group(
+    name: Annotated[str, Field(description='Name of the group to retrieve.')],
+):
     group = get_group(name)
-    return group.model_dump_json() if group else {'error': f'Group "{name}" not found.'}
+    return (
+        group.model_dump_json(exclude_unset=True, exclude_none=True)
+        if group
+        else {'error': f'Group "{name}" not found.'}
+    )
 
 
 @mcp.tool(
@@ -106,14 +96,12 @@ def raindrop_get_group(name: str):
     tags=['Collections'],
 )
 def raindrop_get_root_collections():
-    """
-    Fetch root collections.
-
-    :return: List of root collections or an error message.
-    """
     collections = get_root_collections()
     return (
-        [collection.model_dump() for collection in collections]
+        [
+            collection.model_dump(exclude_unset=True, exclude_none=True)
+            for collection in collections
+        ]
         if collections
         else {'error': 'Failed to retrieve root collections.'}
     )
@@ -124,14 +112,12 @@ def raindrop_get_root_collections():
     tags=['Collections'],
 )
 def raindrop_get_collections():
-    """
-    Fetch all collections, including children.
-
-    :return: List of all collections or an error message.
-    """
     collections = get_collections()
     return (
-        [collection.model_dump() for collection in collections]
+        [
+            collection.model_dump(exclude_unset=True, exclude_none=True)
+            for collection in collections
+        ]
         if collections
         else {'error': 'Failed to retrieve collections.'}
     )
@@ -142,19 +128,13 @@ def raindrop_get_collection(
     collection_id: Annotated[
         int,
         Field(
-            description='Execute a query on Collection to retrieve the ID; if none is found, abort.'
+            description='ID of the collection to retrieve (0 for root, -1 for unsorted, -99 for trash).'
         ),
     ],
 ):
-    """
-    Get a specific collection by ID.
-
-    :param collection_id: ID of the collection to retrieve.
-    :return: Collection information or an error message.
-    """
     collection = get_collection(collection_id)
     return (
-        collection.model_dump_json()
+        collection.model_dump_json(exclude_unset=True, exclude_none=True)
         if collection
         else {'error': f'Collection with ID "{collection_id}" not found.'}
     )
@@ -169,22 +149,15 @@ def raindrop_create_collection(
     parent_id: Annotated[
         int,
         Field(
-            description='Execute a query on Collection to retrieve the ID; if none is found, abort.'
+            description='ID of the parent collection (0 for root, -1 for unsorted, -99 for trash).'
         ),
     ] = None,
 ):
-    """
-    Create a new collection.
-
-    :param title: Title of the new collection.
-    :param parent_id: ID of the parent collection (optional).
-    :return: Created collection information or an error message.
-    """
     collection = create_collection(
         CollectionItem(title=title, parentId=parent_id if parent_id else None)
     )
     return (
-        collection.model_dump_json()
+        collection.model_dump_json(exclude_unset=True, exclude_none=True)
         if collection
         else {'error': 'Failed to create collection.'}
     )
@@ -194,22 +167,13 @@ def raindrop_create_collection(
 def raindrop_update_collection(
     collection_id: Annotated[
         int,
-        Field(
-            description='Execute a query on Collection to retrieve the ID; if none is found, abort.'
-        ),
+        Field(description='ID of the collection to update.'),
     ],
     title: str,
 ):
-    """
-    Update an existing collection.
-
-    :param collection_id: ID of the collection to update.
-    :param title: New title for the collection (optional).
-    :return: Updated collection information or an error message.
-    """
     collection = update_collection(collection_id, CollectionItem(title=title))
     return (
-        collection.model_dump_json()
+        collection.model_dump_json(exclude_unset=True, exclude_none=True)
         if collection
         else {'error': f'Failed to update collection with ID "{collection_id}".'}
     )
@@ -222,24 +186,15 @@ def raindrop_update_collection(
 def raindrop_move_collection(
     collection_id: Annotated[
         int,
-        Field(
-            description='Execute a query on Collection to retrieve the ID; if none is found, abort.'
-        ),
+        Field(description='ID of the collection to move.'),
     ],
     parent_id: Annotated[
         int,
         Field(
-            description='Execute a query on Collection to retrieve the ID; if none is found, abort.'
+            description='ID of the parent collection to move the collection to (0 for root, -1 for unsorted, -99 for trash).'
         ),
     ],
 ):
-    """
-    Move a collection to another collection.
-
-    :param collection_id: ID of the collection to move.
-    :param parent_id: ID of the parent collection to move to.
-    :return: Success message or an error message.
-    """
     collection = update_collection(collection_id, CollectionItem(parentId=parent_id))
     return (
         {'message': f'Collection with ID "{collection_id}" moved successfully.'}
@@ -255,17 +210,9 @@ def raindrop_move_collection(
 def raindrop_delete_collection(
     collection_id: Annotated[
         int,
-        Field(
-            description='Execute a query on Collection to retrieve the ID; if none is found, abort.'
-        ),
+        Field(description='ID of the collection to delete.'),
     ],
 ):
-    """
-    Delete a specific collection.
-
-    :param collection_id: ID of the collection to delete.
-    :return: Success message or an error message.
-    """
     success = delete_collection(collection_id)
     return (
         {'message': f'Collection with ID "{collection_id}" deleted successfully.'}
@@ -281,17 +228,9 @@ def raindrop_delete_collection(
 def raindrop_delete_collections(
     collection_ids: Annotated[
         list[int],
-        Field(
-            description='Execute a query on Collection to retrieve the IDs; if none are found, abort.'
-        ),
+        Field(description='List of collection IDs to delete.'),
     ],
 ):
-    """
-    Delete multiple collections.
-
-    :param collection_ids: List of IDs of the collections to delete.
-    :return: Success message or an error message.
-    """
     success = delete_collections(collection_ids)
     return (
         {'message': 'Collections deleted successfully.'}
@@ -303,55 +242,47 @@ def raindrop_delete_collections(
 @mcp.tool(
     description='Get a specific raindrop by ID',
     tags=['Raindrops', 'Bookmarks'],
-    annotations={'raindrop_id': 'ID of the raindrop to retrieve.'},
 )
-def raindrop_get_raindrop(raindrop_id: int):
-    """
-    Get a specific raindrop by ID.
-
-    :param raindrop_id: ID of the raindrop to retrieve.
-    :return: Raindrop information or an error message.
-    """
+def raindrop_get_raindrop(
+    raindrop_id: Annotated[
+        int,
+        Field(description='ID of the raindrop to retrieve.'),
+    ],
+):
     raindrop = get_raindrop(raindrop_id)
     return (
-        raindrop.model_dump_json()
+        raindrop.model_dump_json(exclude_unset=True, exclude_none=True)
         if raindrop
         else {'error': f'Raindrop with ID "{raindrop_id}" not found.'}
     )
 
 
-# # TODO: https://help.raindrop.io/using-search#operators
+# TODO: https://help.raindrop.io/using-search#operators
 @mcp.tool(
     description='Search for raindrops',
     tags=['Raindrops', 'Bookmarks'],
-    annotations={
-        'collection_id': 'ID of the collection to search in (0 for all, -1 for unsorted, -99 for trash).',
-        'search': 'Search term.',
-        'page': 'Page number for pagination.',
-        'perpage': 'Number of items per page.',
-        'nested': 'Whether to include nested items.',
-    },
+    exclude_args=['nested'],
 )
 def raindrop_search_raindrops(
-    collection_id: int = 0,
-    search: str = '',
-    page: int = 0,
-    perpage: int = 20,
-    nested: bool = False,
+    collection_id: Annotated[
+        int,
+        Field(
+            description='ID of the collection to search in (0 for all, -1 for unsorted, -99 for trash).'
+        ),
+    ] = 0,
+    search: Annotated[str, Field(description='Search term.')] = '',
+    page: Annotated[int, Field(description='Page number for pagination.')] = 0,
+    perpage: Annotated[int, Field(description='Number of items per page.')] = 20,
+    nested: Annotated[
+        bool, Field(description='Whether to include nested items.')
+    ] = False,
 ):
-    """
-    Search for raindrops.
-
-    :param collection_id: ID of the collection to search in (0 for all).
-    :param search: Search term.
-    :param page: Page number for pagination.
-    :param perpage: Number of items per page.
-    :param nested: Whether to include nested items.
-    :return: List of raindrops or an error message.
-    """
     raindrops = get_raindrops(collection_id, search, page, perpage, nested)
     return (
-        [raindrop.model_dump() for raindrop in raindrops]
+        [
+            raindrop.model_dump(exclude_unset=True, exclude_none=True)
+            for raindrop in raindrops
+        ]
         if raindrops
         else {'error': 'No raindrops found.'}
     )
@@ -360,28 +291,28 @@ def raindrop_search_raindrops(
 @mcp.tool(
     description='Create a new raindrop',
     tags=['Raindrops', 'Bookmarks'],
-    annotations={
-        'collection_id': 'ID of the collection to add the raindrop to (default: 0).',
-        'link': 'Link of the raindrop.',
-        'tags': 'List of tags for the raindrop (optional).',
-    },
 )
 def raindrop_create_raindrop(
-    collection_id: int = 0, link: str = None, tags: list = None
+    link: Annotated[
+        str,
+        Field(description='Link of the raindrop to create.'),
+    ],
+    collection_id: Annotated[
+        int,
+        Field(
+            description='ID of the collection to create the raindrop in (0 for unsorted, -1 for trash, -99 for archive).'
+        ),
+    ] = 0,
+    tags: Annotated[
+        list[str],
+        Field(description='List of tags for the raindrop.'),
+    ] = None,
 ):
-    """
-    Create a new raindrop.
-
-    :param collection_id: ID of the collection to add the raindrop to.
-    :param link: Link of the raindrop.
-    :param tags: List of tags for the raindrop (optional).
-    :return: Created raindrop information or an error message.
-    """
     raindrop = create_raindrop(
         RaindropItem(link=link, collectionId=collection_id, tags=tags or [])
     )
     return (
-        raindrop.model_dump_json()
+        raindrop.model_dump_json(exclude_unset=True, exclude_none=True)
         if raindrop
         else {'error': 'Failed to create raindrop.'}
     )
@@ -392,24 +323,107 @@ def raindrop_create_raindrop(
     tags=['Raindrops', 'Bookmarks'],
 )
 def raindrop_update_raindrop(
-    raindrop_id: int,
-    collection_id: int = None,
-    link: str = None,
-    tags: list = None,
+    raindrop_id: Annotated[
+        int,
+        Field(description='ID of the raindrop to update.'),
+    ],
+    link: Annotated[
+        str,
+        Field(description='Link of the raindrop to update.'),
+    ],
+    tags: Annotated[
+        list[str],
+        Field(description='List of tags for the raindrop.'),
+    ] = None,
 ):
     raindrop = update_raindrop(
         raindrop_id,
         RaindropItem(
             link=link,
-            collectionId=collection_id if collection_id else None,
             tags=tags or [],
         ),
     )
     return (
-        raindrop.model_dump_json()
+        raindrop.model_dump_json(exclude_unset=True, exclude_none=True)
         if raindrop
         else {'error': f'Failed to update raindrop with ID "{raindrop_id}".'}
     )
+
+
+@mcp.tool(
+    description='Bulk update raindrops in a collection',
+    tags=['Raindrops', 'Bookmarks'],
+)
+def raindrop_update_raindrops(
+    collection_id: Annotated[
+        int,
+        Field(description='ID of the collection to update raindrops in.'),
+    ],
+    raindrop_ids: Annotated[
+        list[int],
+        Field(description='List of raindrop IDs to update.'),
+    ],
+    tags: Annotated[
+        list[str],
+        Field(description='List of tags to apply to the raindrops.'),
+    ] = None,
+):
+    modified = update_raindrops(
+        collection_id, raindrop_ids, RaindropItem(tags=tags or [])
+    )
+    return {
+        'message': f'Updated {len(raindrop_ids)} raindrops in collection {collection_id}.'
+        if modified
+        else {'error': 'Failed to update raindrops.'}
+    }
+
+
+@mcp.tool(
+    description='Move a raindrop to another collection',
+    tags=['Raindrops', 'Bookmarks'],
+)
+def raindrop_move_raindrop(
+    raindrop_id: Annotated[
+        int,
+        Field(description='ID of the raindrop to move.'),
+    ],
+    collection_id: Annotated[
+        int,
+        Field(
+            description='ID of the collection to move the raindrop to (0 for all, -1 for unsorted, -99 for trash).'
+        ),
+    ],
+):
+    raindrop = update_raindrop(raindrop_id, RaindropItem(collectionId=collection_id))
+    return (
+        {'message': f'Raindrop with ID "{raindrop_id}" moved successfully.'}
+        if raindrop
+        else {'error': f'Failed to move raindrop with ID "{raindrop_id}".'}
+    )
+
+
+@mcp.tool(
+    description='Bulk move raindrops to another collection',
+    tags=['Raindrops', 'Bookmarks'],
+)
+def raindrop_move_raindrops(
+    collection_id: Annotated[
+        int,
+        Field(description='ID of the collection to move raindrops to.'),
+    ],
+    raindrop_ids: Annotated[
+        list[int],
+        Field(description='List of raindrop IDs to move.'),
+    ],
+    target_collection_id: Annotated[
+        int,
+        Field(description='ID of the target collection to move the raindrops to.'),
+    ],
+):
+    modified = update_raindrops(
+        collection_id, raindrop_ids, RaindropItem(collectionId=target_collection_id)
+    )
+    return {'message': f'Moved {len(raindrop_ids)} raindrops to collection {target_collection_id}.'} if modified else {'error': 'Failed to move raindrops.'}
 
 
 @mcp.tool(
@@ -417,13 +431,13 @@ def raindrop_update_raindrop(
     tags=['Raindrops', 'Bookmarks'],
 )
 def raindrop_delete_raindrop(
-    id: int,
+    raindrop_id: Annotated[int, Field(description='ID of the raindrop to delete.')],
 ):
-    success = delete_raindrop(id)
+    success = delete_raindrop(raindrop_id)
     return (
-        {'message': f'Raindrop with ID "{id}" deleted successfully.'}
+        {'message': f'Raindrop with ID "{raindrop_id}" deleted successfully.'}
         if success
-        else {'error': f'Failed to delete raindrop with ID "{id}".'}
+        else {'error': f'Failed to delete raindrop with ID "{raindrop_id}".'}
     )
 
 

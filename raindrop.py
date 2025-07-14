@@ -62,9 +62,6 @@ def get_groups() -> list[Group] | None:
 
 
 def get_group(name: str):
-    """
-    Get a specific group by name.
-    """
     groups = get_groups()
     return (
         next((group for group in groups if group.title == name), None)
@@ -76,7 +73,6 @@ def get_group(name: str):
 def get_root_collections(
     flat: bool = False,
 ) -> list[Group] | list[CollectionItem] | None:
-    """Fetch root collections, optionally grouped."""
     data = make_request('GET', 'collections')
     if not data:
         return None
@@ -97,7 +93,6 @@ def get_root_collections(
 
 
 def get_collections() -> list[Group] | None:
-    """Fetch all collections, including children."""
     data = make_request('GET', 'collections/childrens')
     if not data:
         return None
@@ -149,13 +144,11 @@ def get_collections() -> list[Group] | None:
 
 
 def get_collection(id: int) -> CollectionItem | None:
-    """Fetch a specific collection by ID."""
     data = make_request('GET', f'collection/{id}')
     return Collection(**data).item if data else None
 
 
 def create_collection(collection: CollectionItem) -> CollectionItem | None:
-    """Create a new collection."""
     data = make_request(
         'POST',
         'collection',
@@ -174,20 +167,17 @@ def update_collection(id: int, collection: CollectionItem) -> CollectionItem | N
 
 
 def delete_collection(id: int):
-    """Delete a specific collection."""
     data = make_request('DELETE', f'collection/{id}')
     return True if data else False
 
 
 def delete_collections(ids: list):
-    """Delete multiple collections."""
     payload = {'ids': ids}
     data = make_request('DELETE', 'collections', json=payload)
     return True if data else False
 
 
 def get_raindrop(raindrop_id: int) -> RaindropItem | None:
-    """Fetch a specific raindrop by ID."""
     data = make_request('GET', f'raindrop/{raindrop_id}')
     return Raindrop(**data).item if data else None
 
@@ -200,7 +190,6 @@ def get_raindrops(
     perpage: int = 20,
     nested: bool = False,
 ):
-    """Fetch raindrops from a specific collection."""
     params = {'search': search, 'page': page, 'perpage': perpage, 'nested': nested}
     data = make_request('GET', f'raindrops/{id}', params=params)
     return (
@@ -211,7 +200,6 @@ def get_raindrops(
 
 
 def create_raindrop(raindrop: RaindropItem) -> RaindropItem | None:
-    """Create a new raindrop."""
     data = make_request(
         'POST',
         'raindrop',
@@ -220,8 +208,21 @@ def create_raindrop(raindrop: RaindropItem) -> RaindropItem | None:
     return Raindrop(**data).item if data else None
 
 
+def create_raindrops(raindrop: list[RaindropItem]) -> list[RaindropItem] | None:
+    data = make_request(
+        'POST',
+        'raindrops',
+        json={
+            'items': [
+                item.model_dump(exclude_unset=True, exclude_none=True)
+                for item in raindrop
+            ]
+        },
+    )
+    return [Raindrop(**item) for item in data] if data else None
+
+
 def update_raindrop(raindrop_id: int, raindrop: RaindropItem) -> RaindropItem | None:
-    """Update an existing raindrop."""
     data = make_request(
         'PUT',
         f'raindrop/{raindrop_id}',
@@ -230,7 +231,25 @@ def update_raindrop(raindrop_id: int, raindrop: RaindropItem) -> RaindropItem | 
     return Raindrop(**data).item if data else None
 
 
+def update_raindrops(collection_id, raindrop_ids: list[int], raindrop: RaindropItem) -> list[RaindropItem] | None:
+    data = make_request(
+        'PUT',
+        f'raindrops/{collection_id}',
+        json={
+            'ids': raindrop_ids,
+            'tags': raindrop.tags if raindrop.tags else None,
+            'collectionId': raindrop.collectionId,
+        },
+    )
+    return True if data.get('modified', 0) > 0 else False
+
+
 def delete_raindrop(raindrop_id: int):
-    """Delete a specific raindrop."""
     data = make_request('DELETE', f'raindrop/{raindrop_id}')
     return True if data else False
+
+
+def delete_raindrops(raindrop_ids: list[int]):
+    payload = {'ids': raindrop_ids}
+    data = make_request('DELETE', 'raindrops', json=payload)
+    return True if data.get('modified', 0) > 0 else False
