@@ -21,6 +21,7 @@ from raindrop import (
     update_raindrop,
     update_raindrops,
     delete_raindrop,
+    delete_raindrops,
 )
 from model import CollectionItem, RaindropItem
 
@@ -438,6 +439,28 @@ def raindrop_delete_raindrop(
         {'message': f'Raindrop with ID "{raindrop_id}" deleted successfully.'}
         if success
         else {'error': f'Failed to delete raindrop with ID "{raindrop_id}".'}
+    )
+
+
+@mcp.tool(
+    description='Bulk delete raindrops',
+    tags=['Raindrops', 'Bookmarks'],
+)
+def raindrop_delete_raindrops(
+    collection_id: Annotated[
+        int,
+        Field(description='ID of the collection containing the raindrops to delete.'),
+    ],
+    raindrop_ids: Annotated[
+        list[int],
+        Field(description='List of raindrop IDs to delete.'),
+    ],
+):
+    success = delete_raindrops(collection_id, raindrop_ids)
+    return (
+        {'message': 'Raindrops deleted successfully.'}
+        if success
+        else {'error': 'Failed to delete raindrops.'}
     )
 
 

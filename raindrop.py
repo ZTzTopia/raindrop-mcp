@@ -231,7 +231,7 @@ def update_raindrop(raindrop_id: int, raindrop: RaindropItem) -> RaindropItem | 
     return Raindrop(**data).item if data else None
 
 
-def update_raindrops(collection_id, raindrop_ids: list[int], raindrop: RaindropItem) -> list[RaindropItem] | None:
+def update_raindrops(collection_id: int, raindrop_ids: list[int], raindrop: RaindropItem) -> list[RaindropItem] | None:
     data = make_request(
         'PUT',
         f'raindrops/{collection_id}',
@@ -249,7 +249,7 @@ def delete_raindrop(raindrop_id: int):
     return True if data else False
 
 
-def delete_raindrops(raindrop_ids: list[int]):
+def delete_raindrops(collection_id: int, raindrop_ids: list[int]):
     payload = {'ids': raindrop_ids}
-    data = make_request('DELETE', 'raindrops', json=payload)
+    data = make_request('DELETE', f'raindrops/{collection_id}', json=payload)
     return True if data.get('modified', 0) > 0 else False
