@@ -231,15 +231,22 @@ def update_raindrop(raindrop_id: int, raindrop: RaindropItem) -> RaindropItem | 
     return Raindrop(**data).item if data else None
 
 
-def update_raindrops(collection_id: int, raindrop_ids: list[int], raindrop: RaindropItem) -> list[RaindropItem] | None:
+def update_raindrops(
+    collection_id: int,
+    raindrop: RaindropItem,
+    nested: bool = False,  # Path, Query, or Body parameter?
+    search: str = '',
+    raindrop_ids: list[int] = None,
+) -> list[RaindropItem] | None:
+    payload = {
+        'ids': raindrop_ids,
+        **raindrop.model_dump(exclude_unset=True, exclude_none=True),
+    }
     data = make_request(
         'PUT',
         f'raindrops/{collection_id}',
-        json={
-            'ids': raindrop_ids,
-            'tags': raindrop.tags if raindrop.tags else None,
-            'collectionId': raindrop.collectionId,
-        },
+        params={'search': search},
+        json=payload,
     )
     return True if data.get('modified', 0) > 0 else False
 
@@ -249,7 +256,14 @@ def delete_raindrop(raindrop_id: int):
     return True if data else False
 
 
-def delete_raindrops(collection_id: int, raindrop_ids: list[int]):
+def delete_raindrops(
+    collection_id: int,
+    nested: bool = False,  # Path, Query, or Body parameter?
+    search: str = '',
+    raindrop_ids: list[int] = None,
+):
     payload = {'ids': raindrop_ids}
-    data = make_request('DELETE', f'raindrops/{collection_id}', json=payload)
+    data = make_request(
+        'DELETE', f'raindrops/{collection_id}', params={'search': search}, json=payload
+    )
     return True if data.get('modified', 0) > 0 else False

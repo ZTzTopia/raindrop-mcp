@@ -67,6 +67,7 @@ class RaindropItem(BaseModel):
     excerpt: str = None
     note: str = None
     tags: list[str] = []
+    important: bool | None = None
     collection: Parent = None
     collectionId: int | None = None
 

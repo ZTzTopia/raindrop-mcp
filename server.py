@@ -309,9 +309,15 @@ def raindrop_create_raindrop(
         list[str],
         Field(description='List of tags for the raindrop.'),
     ] = None,
+    important: Annotated[
+        bool,
+        Field(description='Whether to mark the raindrop as important.'),
+    ] = False,
 ):
     raindrop = create_raindrop(
-        RaindropItem(link=link, collectionId=collection_id, tags=tags or [])
+        RaindropItem(
+            link=link, collectionId=collection_id, tags=tags, important=important
+        )
     )
     return (
         raindrop.model_dump_json(exclude_unset=True, exclude_none=True)
@@ -355,12 +361,17 @@ def raindrop_update_raindrop(
         list[str],
         Field(description='List of tags for the raindrop.'),
     ] = None,
+    important: Annotated[
+        bool,
+        Field(description='Whether to mark the raindrop as important.'),
+    ] = False,
 ):
     raindrop = update_raindrop(
         raindrop_id,
         RaindropItem(
             link=link,
-            tags=tags or [],
+            tags=tags,
+            important=important,
         ),
     )
     return (
@@ -387,9 +398,13 @@ def raindrop_update_raindrops(
         list[str],
         Field(description='List of tags to apply to the raindrops.'),
     ] = None,
+    important: Annotated[
+        bool,
+        Field(description='Whether to mark the raindrops as important.'),
+    ] = False,
 ):
     modified = update_raindrops(
-        collection_id, raindrop_ids, RaindropItem(tags=tags or [])
+        collection_id, raindrop_ids, RaindropItem(tags=tags, important=important)
     )
     return {
         'message': f'Updated {len(raindrop_ids)} raindrops in collection {collection_id}.'
@@ -443,7 +458,13 @@ def raindrop_move_raindrops(
     modified = update_raindrops(
         collection_id, raindrop_ids, RaindropItem(collectionId=target_collection_id)
     )
-    return {'message': f'Moved {len(raindrop_ids)} raindrops to collection {target_collection_id}.'} if modified else {'error': 'Failed to move raindrops.'}
+    return (
+        {
+            'message': f'Moved {len(raindrop_ids)} raindrops to collection {target_collection_id}.'
+        }
+        if modified
+        else {'error': 'Failed to move raindrops.'}
+    )
 
 
 @mcp.tool(
@@ -470,12 +491,16 @@ def raindrop_delete_raindrops(
         int,
         Field(description='ID of the collection containing the raindrops to delete.'),
     ],
+    search: Annotated[
+        str,
+        Field(description='Search term to filter raindrops to delete.'),
+    ] = '',
     raindrop_ids: Annotated[
         list[int],
         Field(description='List of raindrop IDs to delete.'),
-    ],
+    ] = None,
 ):
-    success = delete_raindrops(collection_id, raindrop_ids)
+    success = delete_raindrops(collection_id, False, search, raindrop_ids)
     return (
         {'message': 'Raindrops deleted successfully.'}
         if success
