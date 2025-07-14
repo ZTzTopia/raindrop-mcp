@@ -54,14 +54,14 @@ def raindrop_get_user():
     tags=['Collections'],
 )
 def raindrop_get_total_collections(
-    collection_type: Annotated[
-        Literal['all', 'root', 'ungrouped', 'trash'],
+    collection_id: Annotated[
+        int,
         Field(
-            description='Type of collections to count: "all" for all collections, "root" for root collections, "ungrouped" for ungrouped collections, "trash" for trash collections.'
+            description='ID of the collection to get the total count for (0 for root, -1 for unsorted, -99 for trash).'
         ),
-    ] = 'all',
+    ],
 ):
-    total_collections = get_total_collections(collection_type)
+    total_collections = get_total_collections(collection_id)
     return total_collections
 
 

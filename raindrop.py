@@ -34,28 +34,6 @@ def get_user() -> User | None:
     return User(**data) if data else None
 
 
-def get_total_collections(
-    collection_type: Literal['all', 'unsorted', 'trash'] = 'all',
-) -> dict | None:
-    stats = make_request('GET', 'user/stats')
-    if not stats:
-        return None
-
-    id_map = {'all': 0, 'unsorted': -1, 'trash': -99}
-
-    target_id = id_map.get(collection_type)
-    return {
-        'count': next(
-            (
-                item.get('count', 0)
-                for item in stats.get('items', [])
-                if item.get('_id') == target_id
-            ),
-            0,
-        )
-    }
-
-
 def get_groups() -> list[Group] | None:
     user = get_user()
     return user.user.groups if user else None
@@ -146,6 +124,31 @@ def get_collections() -> list[Group] | None:
 def get_collection(id: int) -> CollectionItem | None:
     data = make_request('GET', f'collection/{id}')
     return Collection(**data).item if data else None
+
+
+def get_total_collections(
+    collection_id: int = 0,
+) -> dict | None:
+    stats = make_request('GET', 'user/stats')
+    if not stats:
+        return None
+
+    if collection_id not in [0, -1, -99]:
+        collection = get_collection(collection_id)
+        return {
+            'count': collection.count if collection else 0,
+        }
+
+    return {
+        'count': next(
+            (
+                item.get('count', 0)
+                for item in stats.get('items', [])
+                if item.get('_id') == collection_id
+            ),
+            0,
+        )
+    }
 
 
 def create_collection(collection: CollectionItem) -> CollectionItem | None:
