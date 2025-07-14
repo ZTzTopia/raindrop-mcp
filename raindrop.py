@@ -270,3 +270,43 @@ def delete_raindrops(
         'DELETE', f'raindrops/{collection_id}', params={'search': search}, json=payload
     )
     return True if data.get('modified', 0) > 0 else False
+
+
+def get_tags(
+    collection_id: int = 0,
+) -> list[str] | None:
+    endpoint = 'tags' if collection_id == 0 else f'tags/{collection_id}'
+    data = make_request('GET', endpoint)
+    return data.get('items') if data and 'items' in data else None
+
+
+def rename_tag(
+    replace: str,
+    tags: str,
+    collection_id: int = 0,
+) -> bool:
+    endpoint = 'tags' if collection_id == 0 else f'tags/{collection_id}'
+    payload = {'replace': replace, 'tags': [tags]}
+    data = make_request('PUT', endpoint, json=payload)
+    return True if data else False
+
+
+def merge_tags(
+    replace: str,
+    tags: list[str],
+    collection_id: int = 0,
+) -> bool:
+    endpoint = 'tags' if collection_id == 0 else f'tags/{collection_id}'
+    payload = {'tags': tags, 'replace': replace}
+    data = make_request('PUT', endpoint, json=payload)
+    return True if data else False
+
+
+def delete_tags(
+    tags: list[str],
+    collection_id: int = 0,
+) -> bool:
+    endpoint = 'tags' if collection_id == 0 else f'tags/{collection_id}'
+    payload = {'tags': tags}
+    data = make_request('DELETE', endpoint, json=payload)
+    return True if data else False

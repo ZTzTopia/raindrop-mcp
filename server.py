@@ -1,4 +1,4 @@
-from typing import Annotated, Literal
+from typing import Annotated
 
 from fastmcp import FastMCP
 from pydantic import Field
@@ -12,6 +12,7 @@ from raindrop import (
     delete_collections,
     delete_raindrop,
     delete_raindrops,
+    delete_tags,
     get_collection,
     get_collections,
     get_group,
@@ -19,8 +20,11 @@ from raindrop import (
     get_raindrop,
     get_raindrops,
     get_root_collections,
+    get_tags,
     get_total_collections,
     get_user,
+    merge_tags,
+    rename_tag,
     update_collection,
     update_raindrop,
     update_raindrops,
@@ -505,6 +509,106 @@ def raindrop_delete_raindrops(
         {'message': 'Raindrops deleted successfully.'}
         if success
         else {'error': 'Failed to delete raindrops.'}
+    )
+
+
+@mcp.tool(
+    description='Get tags for a collection',
+    tags=['Raindrops', 'Bookmarks'],
+)
+def raindrop_get_tags(
+    collection_id: Annotated[
+        int,
+        Field(
+            description='ID of the collection to get tags for (0 for all, -1 for unsorted, -99 for trash).'
+        ),
+    ] = 0,
+):
+    tags = get_tags(collection_id)
+    return (
+        [tag.model_dump(exclude_unset=True, exclude_none=True) for tag in tags]
+        if tags
+        else {'error': 'No tags found.'}
+    )
+
+
+@mcp.tool(
+    description='Rename a tag',
+    tags=['Raindrops', 'Bookmarks'],
+)
+def raindrop_rename_tag(
+    replace: Annotated[
+        str,
+        Field(description='Tag to replace.'),
+    ],
+    tags: Annotated[
+        str,
+        Field(description='New tag name.'),
+    ],
+    collection_id: Annotated[
+        int,
+        Field(
+            description='ID of the collection to rename the tag in (0 for all, -1 for unsorted, -99 for trash).'
+        ),
+    ] = 0,
+):
+    success = rename_tag(replace, tags, collection_id)
+    return (
+        {'message': f'Tag "{replace}" renamed to "{tags}" successfully.'}
+        if success
+        else {'error': f'Failed to rename tag "{replace}".'}
+    )
+
+
+@mcp.tool(
+    description='Merge tags',
+    tags=['Raindrops', 'Bookmarks'],
+)
+def raindrop_merge_tags(
+    replace: Annotated[
+        str,
+        Field(description='Tag to replace.'),
+    ],
+    tags: Annotated[
+        list[str],
+        Field(description='List of tags to merge.'),
+    ],
+    collection_id: Annotated[
+        int,
+        Field(
+            description='ID of the collection to merge tags in (0 for all, -1 for unsorted, -99 for trash).'
+        ),
+    ] = 0,
+):
+    success = merge_tags(replace, tags, collection_id)
+    return (
+        {'message': 'Tags merged successfully.'}
+        if success
+        else {'error': 'Failed to merge tags.'}
+    )
+
+
+@mcp.tool(
+    description='Delete a tag',
+    tags=['Raindrops', 'Bookmarks'],
+)
+def raindrop_delete_tag(
+    tags: Annotated[
+        list[str],
+        Field(description='List of tags to delete.'),
+    ],
+    collection_id: Annotated[
+        int,
+        Field(
+            description='ID of the collection to delete the tag from (0 for all, -1 for unsorted, -99 for trash).'
+        ),
+    ] = 0,
+):
+    success = delete_tags(tags, collection_id)
+    return (
+        {'message': 'Tags deleted successfully.'}
+        if success
+        else {'error': 'Failed to delete tags.'}
     )
 
 
