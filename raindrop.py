@@ -3,7 +3,7 @@ from typing import Literal
 
 import requests
 
-from type import (
+from model import (
     Collection,
     CollectionItem,
     CollectionItems,

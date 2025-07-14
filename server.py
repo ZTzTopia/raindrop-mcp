@@ -21,7 +21,7 @@ from raindrop import (
     update_collection,
     update_raindrop,
 )
-from type import CollectionItem, RaindropItem
+from model import CollectionItem, RaindropItem
 
 mcp = FastMCP(
     name='Raindrop MCP Server',
