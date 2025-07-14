@@ -9,6 +9,7 @@ This project provides a server for integrating with [Raindrop.io](https://raindr
 - Manage raindrops (create, update, delete, search).
 - Fetch groups and collections.
 - Search for raindrops.
+- Manage tags (rename, merge, delete).
 
 ### Tools
 
@@ -34,8 +35,18 @@ The server exposes the following tools:
   - `raindrop_create_raindrop`: Create a new raindrop.
   - `raindrop_update_raindrop`: Update an existing raindrop.
   - `raindrop_delete_raindrop`: Delete a specific raindrop.
+  - `raindrop_update_raindrops`: Bulk update raindrops in a collection.
+  - `raindrop_move_raindrop`: Move a raindrop to another collection.
+  - `raindrop_move_raindrops`: Bulk move raindrops to another collection.
+  - `raindrop_delete_raindrops`: Bulk delete raindrops.
+
+- **Tag Tools**:
+  - `raindrop_get_tags`: Get tags for a collection.
+  - `raindrop_rename_tag`: Rename a tag.
+  - `raindrop_merge_tags`: Merge tags.
+  - `raindrop_delete_tag`: Delete a tag.
 
 ## Acknowledgments
 
 - [Raindrop.io](https://raindrop.io) for their API.
-- [FastMCP](https://github.com/fastmcp) for the framework used in this project.
+- [FastMCP](https://gofastmcp.com) for the framework used in this project.
