@@ -21,7 +21,7 @@ session = requests.Session()
 session.headers = {'Authorization': f'Bearer {RAINDROP_ACCESS_TOKEN}'}
 
 
-def make_request(method, endpoint, **kwargs):
+def make_request(method, endpoint, **kwargs) -> dict | None:
     response = session.request(method, f'{URL}/{endpoint}', **kwargs)
     response.raise_for_status()
 
@@ -254,8 +254,18 @@ def update_raindrops(
     return True if data.get('modified', 0) > 0 else False
 
 
-def delete_raindrop(raindrop_id: int):
+def delete_raindrop(
+    raindrop_id: int,
+    permanent: bool = False,
+) -> bool:
     data = make_request('DELETE', f'raindrop/{raindrop_id}')
+    if permanent:
+        if not data:
+            raise ValueError("Failed to delete raindrop, no data returned.")
+
+        data = make_request('DELETE', f'raindrop/{raindrop_id}')
+        return True if data else False
+
     return True if data else False
 
 
@@ -264,12 +274,22 @@ def delete_raindrops(
     nested: bool = False,  # Path, Query, or Body parameter?
     search: str = '',
     raindrop_ids: list[int] = None,
-):
+    permanent: bool = False,
+) -> dict | None:
+    endpoint = f'raindrops/{collection_id}'
+    if permanent:
+        if not raindrop_ids:
+            raise ValueError("raindrop_ids must be provided for permanent deletion.")
+
+        endpoint = 'raindrops/-99'
+
+    params = {'search': search}
     payload = {'ids': raindrop_ids}
+
     data = make_request(
-        'DELETE', f'raindrops/{collection_id}', params={'search': search}, json=payload
+        'DELETE', endpoint, params=params, json=payload
     )
-    return True if data.get('modified', 0) > 0 else False
+    return data
 
 
 def get_tags(
