@@ -74,3 +74,12 @@ class RaindropItem(BaseModel):
 
 class Raindrop(RaindropBaseModel):
     item: RaindropItem
+
+
+class Tag(BaseModel):
+    id: str = Field(alias='_id', default=None)
+    count: int = 0
+
+
+class Tags(RaindropBaseModel):
+    items: list[Tag] = []

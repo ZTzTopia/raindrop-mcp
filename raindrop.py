@@ -9,6 +9,8 @@ from model import (
     Group,
     Raindrop,
     RaindropItem,
+    Tag,
+    Tags,
     User,
 )
 
@@ -273,10 +275,10 @@ def delete_raindrops(
 
 def get_tags(
     collection_id: int = 0,
-) -> list[str] | None:
+) -> list[Tag] | None:
     endpoint = 'tags' if collection_id == 0 else f'tags/{collection_id}'
     data = make_request('GET', endpoint)
-    return data.get('items') if data and 'items' in data else None
+    return Tags(**data).items if data else None
 
 
 def rename_tag(
