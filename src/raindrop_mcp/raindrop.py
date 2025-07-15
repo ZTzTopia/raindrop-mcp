@@ -71,6 +71,14 @@ def get_top_collections(
         group.items = [c for c in collections.items if c.id in group.collections]
         group.collections = None
 
+    # FIXME: We need another request to user endpoint after creating collection
+    #       to make this item available in groups.
+    if groups:
+        ungrouped_items = [
+            c for c in collections.items if all(c.id not in g.items for g in groups)
+        ]
+        groups[0].items.extend(ungrouped_items)
+
     return groups
 
 
@@ -111,8 +119,8 @@ def get_collections() -> list[Group] | None:
         group.items = [c for c in root_items if c.id in group.collections]
         group.collections = None
 
-    # FIXME: We need another request to user endpoint to make this items
-    #       available in groups.
+    # FIXME: We need another request to user endpoint after creating collection
+    #       to make this item available in groups.
     if groups:
         ungrouped_items = [
             c for c in root_items if all(c.id not in g.items for g in groups)
