@@ -23,11 +23,10 @@ session.headers = {'Authorization': f'Bearer {RAINDROP_ACCESS_TOKEN}'}
 
 def make_request(method, endpoint, **kwargs):
     response = session.request(method, f'{URL}/{endpoint}', **kwargs)
-    if response.status_code == 200:
-        data = response.json()
-        return data
+    response.raise_for_status()
 
-    return None
+    data = response.json()
+    return data
 
 
 def get_user() -> User | None:
