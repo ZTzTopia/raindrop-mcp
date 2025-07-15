@@ -52,7 +52,7 @@ def get_group(name: str):
     )
 
 
-def get_root_collections(
+def get_top_collections(
     flat: bool = False,
 ) -> list[Group] | list[CollectionItem] | None:
     data = make_request('GET', 'collections')
@@ -75,18 +75,15 @@ def get_root_collections(
 
 
 def get_collections() -> list[Group] | None:
-    data = make_request('GET', 'collections/childrens')
+    data = make_request('GET', 'collections/all')
     if not data:
         return None
 
     collections = CollectionItems(**data)
-
-    root_collections = get_root_collections(True)
-    if not root_collections:
+    if not collections.items:
         return None
 
-    collections_map = {item.id: item for item in root_collections}
-    collections_map.update({item.id: item for item in collections.items})
+    collections_map = {item.id: item for item in collections.items}
 
     root_items: list[CollectionItem] = []
     for item in collections_map.values():
@@ -130,7 +127,7 @@ def get_collection(id: int) -> CollectionItem | None:
     return Collection(**data).item if data else None
 
 
-def get_total_collections(
+def get_total_raindrops(
     collection_id: int = 0,
 ) -> dict | None:
     stats = make_request('GET', 'user/stats')

@@ -24,7 +24,7 @@ from raindrop_mcp.raindrop import (
     get_groups,
     get_raindrop,
     get_raindrops,
-    get_root_collections,
+    get_top_collections,
     get_tags,
     get_total_raindrops,
     get_user,
@@ -103,18 +103,18 @@ def raindrop_get_group(
 
 
 @mcp.tool(
-    description='Get the root collections of the current user',
+    description='Get the top-level collections',
     tags=['Collections'],
 )
-def raindrop_get_root_collections():
-    collections = get_root_collections()
+def raindrop_get_top_collections():
+    top_collections = get_top_collections()
     return (
         [
             collection.model_dump(exclude_unset=True, exclude_none=True)
-            for collection in collections
+            for collection in top_collections
         ]
-        if collections
-        else {'error': 'Failed to retrieve root collections.'}
+        if top_collections
+        else {'error': 'Failed to retrieve top-level collections.'}
     )
 
 
