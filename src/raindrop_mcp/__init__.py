@@ -3,11 +3,16 @@ from typing import Annotated
 from fastmcp import FastMCP
 from pydantic import Field
 
-from model import CollectionItem, RaindropItem
-from raindrop import (
+from raindrop_mcp.model import (
+    CollectionItem,
+    RaindropCreate,
+    RaindropsUpdate,
+    RaindropUpdate,
+)
+from raindrop_mcp.raindrop import (
     create_collection,
     create_raindrop,
-    create_raindrops,
+    # create_raindrops,
     delete_collection,
     delete_collections,
     delete_raindrop,
@@ -246,7 +251,7 @@ def raindrop_delete_collections(
 
 
 @mcp.tool(
-    description='Get a specific raindrop by ID',
+    description='Get a specific raindrop by identifier.',
     tags=['Raindrops', 'Bookmarks'],
 )
 def raindrop_get_raindrop(
@@ -265,20 +270,29 @@ def raindrop_get_raindrop(
 
 # TODO: https://help.raindrop.io/using-search#operators
 @mcp.tool(
-    description='Search for raindrops',
+    description="""
+    Get a list of raindrops based on various search criteria.
+
+    apple iphone, Find items that contains such words in title, description, domain or in web page content.
+    "sample", Find items that contains exact phrase in title, description, domain or in web page content.
+    #coffee, Find items that have a certain tag.
+    """,
     tags=['Raindrops', 'Bookmarks'],
-    exclude_args=['nested'],
 )
-def raindrop_search_raindrops(
+def raindrop_get_raindrops(
     collection_id: Annotated[
         int,
         Field(
             description='ID of the collection to search in (0 for all, -1 for unsorted, -99 for trash).'
         ),
     ] = 0,
-    search: Annotated[str, Field(description='Search term.')] = '',
-    page: Annotated[int, Field(description='Page number for pagination.')] = 0,
-    perpage: Annotated[int, Field(description='Number of items per page.')] = 20,
+    search: Annotated[str | None, Field(description='Search term.')] = None,
+    page: Annotated[
+        int | None, Field(description='Page number for pagination.')
+    ] = None,
+    perpage: Annotated[
+        int | None, Field(description='Number of items per page.')
+    ] = None,
     nested: Annotated[
         bool, Field(description='Whether to include nested items.')
     ] = False,
@@ -295,7 +309,7 @@ def raindrop_search_raindrops(
 
 
 @mcp.tool(
-    description='Create a new raindrop',
+    description='Create a new raindrop.',
     tags=['Raindrops', 'Bookmarks'],
 )
 def raindrop_create_raindrop(
@@ -304,23 +318,27 @@ def raindrop_create_raindrop(
         Field(description='Link of the raindrop to create.'),
     ],
     collection_id: Annotated[
-        int,
+        int | None,
         Field(
-            description='ID of the collection to create the raindrop in (0 for unsorted, -1 for trash, -99 for archive).'
+            description='ID of the collection to create the raindrop in (-1 for unsorted, -99 for trash).'
         ),
-    ] = 0,
+    ] = None,
     tags: Annotated[
-        list[str],
+        list[str] | None,
         Field(description='List of tags for the raindrop.'),
     ] = None,
     important: Annotated[
-        bool,
+        bool | None,
         Field(description='Whether to mark the raindrop as important.'),
-    ] = False,
+    ] = None,
 ):
     raindrop = create_raindrop(
-        RaindropItem(
-            link=link, collectionId=collection_id, tags=tags, important=important
+        RaindropCreate(
+            link=link,
+            collectionId=collection_id,
+            tags=tags,
+            important=important,
+            pleaseParse={'weight': 1},
         )
     )
     return (
@@ -358,24 +376,25 @@ def raindrop_update_raindrop(
         Field(description='ID of the raindrop to update.'),
     ],
     link: Annotated[
-        str,
+        str | None,
         Field(description='Link of the raindrop to update.'),
-    ],
+    ] = None,
     tags: Annotated[
-        list[str],
+        list[str] | None,
         Field(description='List of tags for the raindrop.'),
     ] = None,
     important: Annotated[
-        bool,
+        bool | None,
         Field(description='Whether to mark the raindrop as important.'),
-    ] = False,
+    ] = None,
 ):
     raindrop = update_raindrop(
         raindrop_id,
-        RaindropItem(
+        RaindropUpdate(
             link=link,
             tags=tags,
             important=important,
+            pleaseParse={'weight': 1} if link else None,
         ),
     )
     return (
@@ -392,28 +411,42 @@ def raindrop_update_raindrop(
 def raindrop_update_raindrops(
     collection_id: Annotated[
         int,
-        Field(description='ID of the collection to update raindrops in.'),
+        Field(
+            description='ID of the collection to update raindrops in. (0 for all but trash excluded).'
+        ),
     ],
     raindrop_ids: Annotated[
-        list[int],
+        list[int] | None,
         Field(description='List of raindrop IDs to update.'),
-    ],
+    ] = None,
     tags: Annotated[
-        list[str],
+        list[str] | None,
         Field(description='List of tags to apply to the raindrops.'),
     ] = None,
     important: Annotated[
-        bool,
+        bool | None,
         Field(description='Whether to mark the raindrops as important.'),
+    ] = None,
+    search: Annotated[
+        str | None,
+        Field(description='Search term to filter raindrops to update.'),
+    ] = None,
+    nested: Annotated[
+        bool, Field(description='Whether to include nested items in the update.')
     ] = False,
 ):
     modified = update_raindrops(
-        collection_id, raindrop_ids, RaindropItem(tags=tags, important=important)
+        collection_id,
+        RaindropsUpdate(
+            ids=raindrop_ids,
+            tags=tags,
+            important=important,
+        ),
+        nested,
+        search,
     )
     return {
-        'message': f'Updated {len(raindrop_ids)} raindrops in collection {collection_id}.'
-        if modified
-        else {'error': 'Failed to update raindrops.'}
+        'modified': modified if modified else {'error': 'Failed to update raindrops.'}
     }
 
 
@@ -429,11 +462,11 @@ def raindrop_move_raindrop(
     collection_id: Annotated[
         int,
         Field(
-            description='ID of the collection to move the raindrop to (0 for all, -1 for unsorted, -99 for trash).'
+            description='ID of the collection to move the raindrop to (-1 for unsorted, -99 for trash).'
         ),
     ],
 ):
-    raindrop = update_raindrop(raindrop_id, RaindropItem(collectionId=collection_id))
+    raindrop = update_raindrop(raindrop_id, RaindropUpdate(collectionId=collection_id))
     return (
         {'message': f'Raindrop with ID "{raindrop_id}" moved successfully.'}
         if raindrop
@@ -448,26 +481,36 @@ def raindrop_move_raindrop(
 def raindrop_move_raindrops(
     collection_id: Annotated[
         int,
-        Field(description='ID of the collection to move raindrops to.'),
-    ],
-    raindrop_ids: Annotated[
-        list[int],
-        Field(description='List of raindrop IDs to move.'),
+        Field(
+            description='ID of the collection to move raindrops to (0 for all but trash excluded).'
+        ),
     ],
     target_collection_id: Annotated[
         int,
-        Field(description='ID of the target collection to move the raindrops to.'),
+        Field(
+            description='ID of the target collection to move the raindrops to. (-1 for unsorted, -99 for trash).'
+        ),
     ],
+    search: Annotated[
+        str | None,
+        Field(description='Search term to filter raindrops to move.'),
+    ] = None,
+    raindrop_ids: Annotated[
+        list[int] | None,
+        Field(description='List of raindrop IDs to move.'),
+    ] = None,
+    nested: Annotated[
+        bool, Field(description='Whether to include nested items in the move.')
+    ] = False,
 ):
     modified = update_raindrops(
-        collection_id, raindrop_ids, RaindropItem(collectionId=target_collection_id)
+        collection_id,
+        RaindropsUpdate(ids=raindrop_ids, collectionId=target_collection_id),
+        nested=nested,
+        search=search,
     )
     return (
-        {
-            'message': f'Moved {len(raindrop_ids)} raindrops to collection {target_collection_id}.'
-        }
-        if modified
-        else {'error': 'Failed to move raindrops.'}
+        {'modified': modified} if modified else {'error': 'Failed to move raindrops.'}
     )
 
 
@@ -477,8 +520,11 @@ def raindrop_move_raindrops(
 )
 def raindrop_delete_raindrop(
     raindrop_id: Annotated[int, Field(description='ID of the raindrop to delete.')],
+    permanent: Annotated[
+        bool, Field(description='Whether to permanently delete the raindrop.')
+    ] = False,
 ):
-    success = delete_raindrop(raindrop_id)
+    success = delete_raindrop(raindrop_id, permanent)
     return (
         {'message': f'Raindrop with ID "{raindrop_id}" deleted successfully.'}
         if success
@@ -493,22 +539,26 @@ def raindrop_delete_raindrop(
 def raindrop_delete_raindrops(
     collection_id: Annotated[
         int,
-        Field(description='ID of the collection containing the raindrops to delete.'),
+        Field(
+            description='ID of the collection containing the raindrops to delete (0 for all but trash excluded, -99 to delete from trash).'
+        ),
     ],
     search: Annotated[
-        str,
+        str | None,
         Field(description='Search term to filter raindrops to delete.'),
-    ] = '',
+    ] = None,
     raindrop_ids: Annotated[
-        list[int],
+        list[int] | None,
         Field(description='List of raindrop IDs to delete.'),
     ] = None,
+    permanent: Annotated[
+        bool,
+        Field(description='Whether to permanently delete the raindrops.'),
+    ] = False,
 ):
-    success = delete_raindrops(collection_id, False, search, raindrop_ids)
+    modified = delete_raindrops(collection_id, False, search, raindrop_ids, permanent)
     return (
-        {'message': 'Raindrops deleted successfully.'}
-        if success
-        else {'error': 'Failed to delete raindrops.'}
+        {'modified': modified} if modified else {'error': 'Failed to delete raindrops.'}
     )
 
 
@@ -612,5 +662,5 @@ def raindrop_delete_tag(
     )
 
 
-if __name__ == '__main__':
+def main():
     mcp.run()

@@ -2,15 +2,19 @@ import os
 
 import requests
 
-from model import (
+from raindrop_mcp.model import (
     Collection,
     CollectionItem,
     CollectionItems,
     Group,
-    Raindrop,
-    RaindropItem,
+    RaindropCreate,
+    RaindropResponse,
+    RaindropsResponse,
+    RaindropsUpdate,
+    RaindropUpdate,
     Tag,
     Tags,
+    UpdateDeleteRaindropsResponse,
     User,
 )
 
@@ -31,12 +35,12 @@ def make_request(method, endpoint, **kwargs) -> dict | None:
 
 def get_user() -> User | None:
     data = make_request('GET', 'user')
-    return User(**data) if data else None
+    return User(**data).user if data else None
 
 
 def get_groups() -> list[Group] | None:
     user = get_user()
-    return user.user.groups if user else None
+    return user.groups if user else None
 
 
 def get_group(name: str):
@@ -180,116 +184,112 @@ def delete_collections(ids: list):
     return True if data else False
 
 
-def get_raindrop(raindrop_id: int) -> RaindropItem | None:
+def get_raindrop(raindrop_id: int):
     data = make_request('GET', f'raindrop/{raindrop_id}')
-    return Raindrop(**data).item if data else None
+    return RaindropResponse(**data).item if data else None
 
 
-# TODO: Create tree structure for nested raindrops
 def get_raindrops(
-    id: int = 0,
-    search: str = '',
-    page: int = 0,
-    perpage: int = 20,
+    collection_id: int = 0,
+    search: str | None = None,
+    page: int | None = None,
+    perpage: int | None = None,
     nested: bool = False,
 ):
-    params = {'search': search, 'page': page, 'perpage': perpage, 'nested': nested}
-    data = make_request('GET', f'raindrops/{id}', params=params)
-    return (
-        [RaindropItem(**item) for item in data['items']]
-        if data and 'items' in data
-        else None
-    )
+    params = {'nested': nested}
+    if search:
+        params['search'] = search
+    if page is not None:
+        params['page'] = page
+    if perpage is not None:
+        params['perpage'] = perpage
+
+    data = make_request('GET', f'raindrops/{collection_id}', params=params)
+    return RaindropsResponse(**data).items if data else None
 
 
-def create_raindrop(raindrop: RaindropItem) -> RaindropItem | None:
+def create_raindrop(raindrop: RaindropCreate):
     data = make_request(
         'POST',
         'raindrop',
         json=raindrop.model_dump(exclude_unset=True, exclude_none=True),
     )
-    return Raindrop(**data).item if data else None
+    return RaindropResponse(**data).item if data else None
 
 
-def create_raindrops(raindrop: list[RaindropItem]) -> list[RaindropItem] | None:
-    data = make_request(
-        'POST',
-        'raindrops',
-        json={
-            'items': [
-                item.model_dump(exclude_unset=True, exclude_none=True)
-                for item in raindrop
-            ]
-        },
-    )
-    return [Raindrop(**item) for item in data] if data else None
+# def create_raindrops(raindrop: list[RaindropItem]) -> list[RaindropItem] | None:
+#     data = make_request(
+#         'POST',
+#         'raindrops',
+#         json={
+#             'items': [
+#                 item.model_dump(exclude_unset=True, exclude_none=True)
+#                 for item in raindrop
+#             ]
+#         },
+#     )
+#     return [Raindrop(**item) for item in data] if data else None
 
 
-def update_raindrop(raindrop_id: int, raindrop: RaindropItem) -> RaindropItem | None:
+def update_raindrop(raindrop_id: int, raindrop: RaindropUpdate):
     data = make_request(
         'PUT',
         f'raindrop/{raindrop_id}',
         json=raindrop.model_dump(exclude_unset=True, exclude_none=True),
     )
-    return Raindrop(**data).item if data else None
+    return RaindropResponse(**data).item if data else None
 
 
 def update_raindrops(
     collection_id: int,
-    raindrop: RaindropItem,
-    nested: bool = False,  # Path, Query, or Body parameter?
-    search: str = '',
-    raindrop_ids: list[int] = None,
-) -> list[RaindropItem] | None:
-    payload = {
-        'ids': raindrop_ids,
-        **raindrop.model_dump(exclude_unset=True, exclude_none=True),
-    }
+    raindrop: RaindropsUpdate,
+    nested: bool = False,
+    search: str | None = None,
+):
+    params = {'search': search, 'nested': nested} if search else {}
     data = make_request(
         'PUT',
         f'raindrops/{collection_id}',
-        params={'search': search},
-        json=payload,
+        params=params,
+        json=raindrop.model_dump(exclude_unset=True, exclude_none=True),
     )
-    return True if data.get('modified', 0) > 0 else False
+    return UpdateDeleteRaindropsResponse(**data).modified if data else None
 
 
 def delete_raindrop(
     raindrop_id: int,
     permanent: bool = False,
-) -> bool:
+):
     data = make_request('DELETE', f'raindrop/{raindrop_id}')
     if permanent:
         if not data:
-            raise ValueError("Failed to delete raindrop, no data returned.")
+            raise ValueError('Failed to delete raindrop, no data returned.')
 
         data = make_request('DELETE', f'raindrop/{raindrop_id}')
-        return True if data else False
 
     return True if data else False
 
 
 def delete_raindrops(
     collection_id: int,
-    nested: bool = False,  # Path, Query, or Body parameter?
-    search: str = '',
-    raindrop_ids: list[int] = None,
+    nested: bool = False,
+    search: str | None = None,
+    raindrop_ids: list[int] | None = None,
     permanent: bool = False,
-) -> dict | None:
-    endpoint = f'raindrops/{collection_id}'
-    if permanent:
-        if not raindrop_ids:
-            raise ValueError("raindrop_ids must be provided for permanent deletion.")
-
-        endpoint = 'raindrops/-99'
-
-    params = {'search': search}
-    payload = {'ids': raindrop_ids}
+):
+    params = {'search': search, 'nested': nested} if search else {}
+    payload = {'ids': raindrop_ids} if raindrop_ids else {}
 
     data = make_request(
-        'DELETE', endpoint, params=params, json=payload
+        'DELETE', f'raindrops/{collection_id}', params=params, json=payload
     )
-    return data
+    if permanent:
+        if not data:
+            raise ValueError('Failed to delete raindrops, no data returned.')
+
+        data = make_request('DELETE', 'raindrops/-99', params=params, json=payload)
+
+    return UpdateDeleteRaindropsResponse(**data).modified if data else None
 
 
 def get_tags(
