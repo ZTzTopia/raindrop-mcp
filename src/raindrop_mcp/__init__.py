@@ -26,7 +26,7 @@ from raindrop_mcp.raindrop import (
     get_raindrops,
     get_root_collections,
     get_tags,
-    get_total_collections,
+    get_total_raindrops,
     get_user,
     merge_tags,
     rename_tag,
@@ -59,19 +59,19 @@ def raindrop_get_user():
 
 
 @mcp.tool(
-    description='Get the total number of collections for a specific type',
+    description='Get the total number of raindrops for a specific collection',
     tags=['Collections'],
 )
-def raindrop_get_total_collections(
+def raindrop_get_total_raindrops(
     collection_id: Annotated[
         int,
         Field(
-            description='ID of the collection to get the total count for (0 for root, -1 for unsorted, -99 for trash).'
+            description='ID of the collection to get the total count for (0 for all, -1 for unsorted, -99 for trash).'
         ),
     ],
 ):
-    total_collections = get_total_collections(collection_id)
-    return total_collections
+    total_raindrops = get_total_raindrops(collection_id)
+    return total_raindrops
 
 
 @mcp.tool(
