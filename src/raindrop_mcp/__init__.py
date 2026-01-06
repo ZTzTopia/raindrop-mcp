@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastmcp import FastMCP
 from pydantic import Field
@@ -12,19 +12,15 @@ from raindrop_mcp.model import (
 from raindrop_mcp.raindrop import (
     create_collection,
     create_raindrop,
-    # create_raindrops,
-    delete_collection,
     delete_collections,
     delete_raindrop,
     delete_raindrops,
     delete_tags,
     get_collection,
     get_collections,
-    get_group,
     get_groups,
     get_raindrop,
     get_raindrops,
-    get_top_collections,
     get_tags,
     get_total_raindrops,
     get_user,
@@ -75,54 +71,45 @@ def raindrop_get_total_raindrops(
 
 
 @mcp.tool(
-    description='Get the list of groups associated with the current user',
+    description='Get the list of groups associated with the current user, optionally filtered by name',
     tags=['Groups'],
 )
-def raindrop_get_groups():
-    groups = get_groups()
-    return (
-        [group.model_dump(exclude_unset=True, exclude_none=True) for group in groups]
-        if groups
-        else {'error': 'No groups found.'}
-    )
-
-
-@mcp.tool(
-    description='Get a specific group by name',
-    tags=['Groups'],
-)
-def raindrop_get_group(
-    name: Annotated[str, Field(description='Name of the group to retrieve.')],
+def raindrop_get_groups(
+    name: Annotated[
+        Optional[str],
+        Field(description='Name of the group to filter by.'),
+    ] = None,
 ):
-    group = get_group(name)
-    return (
-        group.model_dump_json(exclude_unset=True, exclude_none=True)
-        if group
-        else {'error': f'Group "{name}" not found.'}
-    )
+    groups = get_groups()
+    if not groups:
+        return {'error': 'No groups found.'}
+
+    if name:
+        groups = [g for g in groups if g.title == name]
+        if not groups:
+            return {'error': f'Group "{name}" not found.'}
+
+    return [group.model_dump(exclude_unset=True, exclude_none=True) for group in groups]
 
 
 @mcp.tool(
-    description='Get the top-level collections',
+    description='Get all collections or specific collections by ID',
     tags=['Collections'],
 )
-def raindrop_get_top_collections():
-    top_collections = get_top_collections()
-    return (
-        [
-            collection.model_dump(exclude_unset=True, exclude_none=True)
-            for collection in top_collections
-        ]
-        if top_collections
-        else {'error': 'Failed to retrieve top-level collections.'}
-    )
-
-
-@mcp.tool(
-    description='Get all collections including children (always use this before creating a collection or raindrop)',
-    tags=['Collections'],
-)
-def raindrop_get_collections():
+def raindrop_get_collections(
+    collection_ids: Annotated[
+        Optional[list[int]],
+        Field(description='List of collection IDs to retrieve. If not provided, returns all collections.'),
+    ] = None,
+):
+    if collection_ids:
+        results = []
+        for cid in collection_ids:
+            collection = get_collection(cid)
+            if collection:
+                results.append(collection.model_dump(exclude_unset=True, exclude_none=True))
+        return results if results else {'error': 'No collections found for the provided IDs.'}
+    
     collections = get_collections()
     return (
         [
@@ -131,23 +118,6 @@ def raindrop_get_collections():
         ]
         if collections
         else {'error': 'Failed to retrieve collections.'}
-    )
-
-
-@mcp.tool(description='Get a specific collection by ID', tags=['Collections'])
-def raindrop_get_collection(
-    collection_id: Annotated[
-        int,
-        Field(
-            description='ID of the collection to retrieve (0 for root, -1 for unsorted, -99 for trash).'
-        ),
-    ],
-):
-    collection = get_collection(collection_id)
-    return (
-        collection.model_dump_json(exclude_unset=True, exclude_none=True)
-        if collection
-        else {'error': f'Collection with ID "{collection_id}" not found.'}
     )
 
 
@@ -174,15 +144,28 @@ def raindrop_create_collection(
     )
 
 
-@mcp.tool(description='Update an existing collection', tags=['Collections'])
+@mcp.tool(description='Update an existing collection (rename or move)', tags=['Collections'])
 def raindrop_update_collection(
     collection_id: Annotated[
         int,
         Field(description='ID of the collection to update.'),
     ],
-    title: str,
+    title: Annotated[
+        Optional[str],
+        Field(description='New title for the collection.'),
+    ] = None,
+    parent_id: Annotated[
+        Optional[int],
+        Field(description='New parent ID to move the collection to.'),
+    ] = None,
 ):
-    collection = update_collection(collection_id, CollectionItem(title=title))
+    update_data = CollectionItem()
+    if title is not None:
+        update_data.title = title
+    if parent_id is not None:
+        update_data.parentId = parent_id
+
+    collection = update_collection(collection_id, update_data)
     return (
         collection.model_dump_json(exclude_unset=True, exclude_none=True)
         if collection
@@ -191,49 +174,7 @@ def raindrop_update_collection(
 
 
 @mcp.tool(
-    description='Move a collection to other collection',
-    tags=['Collections'],
-)
-def raindrop_move_collection(
-    collection_id: Annotated[
-        int,
-        Field(description='ID of the collection to move.'),
-    ],
-    parent_id: Annotated[
-        int,
-        Field(
-            description='ID of the parent collection to move the collection to (0 for root, -1 for unsorted, -99 for trash).'
-        ),
-    ],
-):
-    collection = update_collection(collection_id, CollectionItem(parentId=parent_id))
-    return (
-        {'message': f'Collection with ID "{collection_id}" moved successfully.'}
-        if collection
-        else {'error': f'Failed to move collection with ID "{collection_id}".'}
-    )
-
-
-@mcp.tool(
-    description='Delete a specific collection',
-    tags=['Collections'],
-)
-def raindrop_delete_collection(
-    collection_id: Annotated[
-        int,
-        Field(description='ID of the collection to delete.'),
-    ],
-):
-    success = delete_collection(collection_id)
-    return (
-        {'message': f'Collection with ID "{collection_id}" deleted successfully.'}
-        if success
-        else {'error': f'Failed to delete collection with ID "{collection_id}".'}
-    )
-
-
-@mcp.tool(
-    description='Bulk delete collections',
+    description='Delete collections (single or bulk)',
     tags=['Collections'],
 )
 def raindrop_delete_collections(
@@ -250,29 +191,15 @@ def raindrop_delete_collections(
     )
 
 
-@mcp.tool(
-    description='Get a specific raindrop by identifier.',
-    tags=['Raindrops', 'Bookmarks'],
-)
-def raindrop_get_raindrop(
-    raindrop_id: Annotated[
-        int,
-        Field(description='ID of the raindrop to retrieve.'),
-    ],
-):
-    raindrop = get_raindrop(raindrop_id)
-    return (
-        raindrop.model_dump_json(exclude_unset=True, exclude_none=True)
-        if raindrop
-        else {'error': f'Raindrop with ID "{raindrop_id}" not found.'}
-    )
-
-
 # TODO: https://help.raindrop.io/using-search#operators
 @mcp.tool(
     description="""
-    Get a list of raindrops based on various search criteria.
+    Get raindrops. Can retrieve by specific IDs OR search within a collection.
+    
+    If `raindrop_ids` is provided, fetches those specific raindrops.
+    Otherwise, searches in `collection_id` using `search` term.
 
+    Search examples:
     apple iphone, Find items that contains such words in title, description, domain or in web page content.
     "sample", Find items that contains exact phrase in title, description, domain or in web page content.
     #coffee, Find items that have a certain tag.
@@ -283,9 +210,13 @@ def raindrop_get_raindrops(
     collection_id: Annotated[
         int,
         Field(
-            description='ID of the collection to search in (0 for all, -1 for unsorted, -99 for trash).'
+            description='ID of the collection to search in (0 for all, -1 for unsorted, -99 for trash). Ignored if raindrop_ids is provided.'
         ),
     ] = 0,
+    raindrop_ids: Annotated[
+        Optional[list[int]],
+        Field(description='List of specific raindrop IDs to retrieve.'),
+    ] = None,
     search: Annotated[str | None, Field(description='Search term.')] = None,
     page: Annotated[
         int | None, Field(description='Page number for pagination.')
@@ -297,6 +228,14 @@ def raindrop_get_raindrops(
         bool, Field(description='Whether to include nested items.')
     ] = False,
 ):
+    if raindrop_ids:
+        results = []
+        for rid in raindrop_ids:
+            raindrop = get_raindrop(rid)
+            if raindrop:
+                results.append(raindrop.model_dump(exclude_unset=True, exclude_none=True))
+        return results if results else {'error': 'No raindrops found for the provided IDs.'}
+
     raindrops = get_raindrops(collection_id, search, page, perpage, nested)
     return (
         [
@@ -348,26 +287,8 @@ def raindrop_create_raindrop(
     )
 
 
-# @mcp.tool(
-#     description='Bulk create raindrops',
-#     tags=['Raindrops', 'Bookmarks'],
-# )
-# def raindrop_create_raindrops(
-#     raindrops: Annotated[
-#         list[RaindropItem],
-#         Field(description='List of raindrops to create.'),
-#     ],
-# ):
-#     created_raindrops = create_raindrops(raindrops)
-#     return (
-#         [raindrop.model_dump(exclude_unset=True, exclude_none=True) for raindrop in created_raindrops]
-#         if created_raindrops
-#         else {'error': 'Failed to create raindrops.'}
-#     )
-
-
 @mcp.tool(
-    description='Update an existing raindrop',
+    description='Update an existing raindrop (change properties or move)',
     tags=['Raindrops', 'Bookmarks'],
 )
 def raindrop_update_raindrop(
@@ -387,6 +308,10 @@ def raindrop_update_raindrop(
         bool | None,
         Field(description='Whether to mark the raindrop as important.'),
     ] = None,
+    collection_id: Annotated[
+        Optional[int],
+        Field(description='ID of the collection to move the raindrop to.'),
+    ] = None,
 ):
     raindrop = update_raindrop(
         raindrop_id,
@@ -394,6 +319,7 @@ def raindrop_update_raindrop(
             link=link,
             tags=tags,
             important=important,
+            collectionId=collection_id,
             pleaseParse={'weight': 1} if link else None,
         ),
     )
@@ -405,7 +331,7 @@ def raindrop_update_raindrop(
 
 
 @mcp.tool(
-    description='Bulk update raindrops in a collection',
+    description='Bulk update raindrops in a collection (change properties or move)',
     tags=['Raindrops', 'Bookmarks'],
 )
 def raindrop_update_raindrops(
@@ -427,6 +353,10 @@ def raindrop_update_raindrops(
         bool | None,
         Field(description='Whether to mark the raindrops as important.'),
     ] = None,
+    target_collection_id: Annotated[
+        Optional[int],
+        Field(description='ID of the target collection to move the raindrops to.'),
+    ] = None,
     search: Annotated[
         str | None,
         Field(description='Search term to filter raindrops to update.'),
@@ -441,6 +371,7 @@ def raindrop_update_raindrops(
             ids=raindrop_ids,
             tags=tags,
             important=important,
+            collectionId=target_collection_id,
         ),
         nested,
         search,
@@ -451,115 +382,45 @@ def raindrop_update_raindrops(
 
 
 @mcp.tool(
-    description='Move a raindrop to another collection',
-    tags=['Raindrops', 'Bookmarks'],
-)
-def raindrop_move_raindrop(
-    raindrop_id: Annotated[
-        int,
-        Field(description='ID of the raindrop to move.'),
-    ],
-    collection_id: Annotated[
-        int,
-        Field(
-            description='ID of the collection to move the raindrop to (-1 for unsorted, -99 for trash).'
-        ),
-    ],
-):
-    raindrop = update_raindrop(raindrop_id, RaindropUpdate(collectionId=collection_id))
-    return (
-        {'message': f'Raindrop with ID "{raindrop_id}" moved successfully.'}
-        if raindrop
-        else {'error': f'Failed to move raindrop with ID "{raindrop_id}".'}
-    )
-
-
-@mcp.tool(
-    description='Bulk move raindrops to another collection',
-    tags=['Raindrops', 'Bookmarks'],
-)
-def raindrop_move_raindrops(
-    collection_id: Annotated[
-        int,
-        Field(
-            description='ID of the collection to move raindrops to (0 for all but trash excluded).'
-        ),
-    ],
-    target_collection_id: Annotated[
-        int,
-        Field(
-            description='ID of the target collection to move the raindrops to. (-1 for unsorted, -99 for trash).'
-        ),
-    ],
-    search: Annotated[
-        str | None,
-        Field(description='Search term to filter raindrops to move.'),
-    ] = None,
-    raindrop_ids: Annotated[
-        list[int] | None,
-        Field(description='List of raindrop IDs to move.'),
-    ] = None,
-    nested: Annotated[
-        bool, Field(description='Whether to include nested items in the move.')
-    ] = False,
-):
-    modified = update_raindrops(
-        collection_id,
-        RaindropsUpdate(ids=raindrop_ids, collectionId=target_collection_id),
-        nested=nested,
-        search=search,
-    )
-    return (
-        {'modified': modified} if modified else {'error': 'Failed to move raindrops.'}
-    )
-
-
-@mcp.tool(
-    description='Delete a specific raindrop',
-    tags=['Raindrops', 'Bookmarks'],
-)
-def raindrop_delete_raindrop(
-    raindrop_id: Annotated[int, Field(description='ID of the raindrop to delete.')],
-    permanent: Annotated[
-        bool, Field(description='Whether to permanently delete the raindrop.')
-    ] = False,
-):
-    success = delete_raindrop(raindrop_id, permanent)
-    return (
-        {'message': f'Raindrop with ID "{raindrop_id}" deleted successfully.'}
-        if success
-        else {'error': f'Failed to delete raindrop with ID "{raindrop_id}".'}
-    )
-
-
-@mcp.tool(
-    description='Bulk delete raindrops',
+    description='Delete raindrops (single or bulk)',
     tags=['Raindrops', 'Bookmarks'],
 )
 def raindrop_delete_raindrops(
-    collection_id: Annotated[
-        int,
-        Field(
-            description='ID of the collection containing the raindrops to delete (0 for all but trash excluded, -99 to delete from trash).'
-        ),
+    raindrop_ids: Annotated[
+        list[int],
+        Field(description='List of raindrop IDs to delete.'),
     ],
+    collection_id: Annotated[
+        Optional[int],
+        Field(
+            description='ID of the collection containing the raindrops (0 for all but trash excluded). Required for bulk deletion optimization, but optional if deleting by ID one by one.'
+        ),
+    ] = None,
     search: Annotated[
         str | None,
-        Field(description='Search term to filter raindrops to delete.'),
-    ] = None,
-    raindrop_ids: Annotated[
-        list[int] | None,
-        Field(description='List of raindrop IDs to delete.'),
+        Field(description='Search term to filter raindrops to delete (requires collection_id).'),
     ] = None,
     permanent: Annotated[
         bool,
         Field(description='Whether to permanently delete the raindrops.'),
     ] = False,
 ):
-    modified = delete_raindrops(collection_id, False, search, raindrop_ids, permanent)
-    return (
-        {'modified': modified} if modified else {'error': 'Failed to delete raindrops.'}
-    )
+    # If collection_id is provided, use the bulk endpoint
+    if collection_id is not None:
+        modified = delete_raindrops(collection_id, False, search, raindrop_ids, permanent)
+        return (
+            {'modified': modified} if modified else {'error': 'Failed to delete raindrops.'}
+        )
+    
+    # If no collection_id, delete one by one (less efficient but flexible)
+    if raindrop_ids:
+        count = 0
+        for rid in raindrop_ids:
+            if delete_raindrop(rid, permanent):
+                count += 1
+        return {'modified': count}
+    
+    return {'error': 'Either collection_id or raindrop_ids must be provided.'}
 
 
 @mcp.tool(
@@ -583,54 +444,36 @@ def raindrop_get_tags(
 
 
 @mcp.tool(
-    description='Rename a tag',
+    description='Update tags (rename or merge)',
     tags=['Raindrops', 'Bookmarks'],
 )
-def raindrop_rename_tag(
-    replace: Annotated[
+def raindrop_update_tags(
+    target_tag: Annotated[
         str,
-        Field(description='Tag to replace.'),
+        Field(description='The new tag name (target).'),
     ],
-    tags: Annotated[
-        str,
-        Field(description='New tag name.'),
-    ],
-    collection_id: Annotated[
-        int,
-        Field(
-            description='ID of the collection to rename the tag in (0 for all, -1 for unsorted, -99 for trash).'
-        ),
-    ] = 0,
-):
-    success = rename_tag(replace, tags, collection_id)
-    return (
-        {'message': f'Tag "{replace}" renamed to "{tags}" successfully.'}
-        if success
-        else {'error': f'Failed to rename tag "{replace}".'}
-    )
-
-
-@mcp.tool(
-    description='Merge tags',
-    tags=['Raindrops', 'Bookmarks'],
-)
-def raindrop_merge_tags(
-    replace: Annotated[
-        str,
-        Field(description='Tag to replace.'),
-    ],
-    tags: Annotated[
+    source_tags: Annotated[
         list[str],
-        Field(description='List of tags to merge.'),
+        Field(description='List of tags to be renamed or merged into the target tag.'),
     ],
     collection_id: Annotated[
         int,
         Field(
-            description='ID of the collection to merge tags in (0 for all, -1 for unsorted, -99 for trash).'
+            description='ID of the collection to update tags in (0 for all, -1 for unsorted, -99 for trash).'
         ),
     ] = 0,
 ):
-    success = merge_tags(replace, tags, collection_id)
+    # If only one source tag, it's a rename
+    if len(source_tags) == 1:
+        success = rename_tag(source_tags[0], target_tag, collection_id)
+        return (
+            {'message': f'Tag "{source_tags[0]}" renamed to "{target_tag}" successfully.'}
+            if success
+            else {'error': f'Failed to rename tag "{source_tags[0]}".'}
+        )
+    
+    # If multiple source tags, it's a merge
+    success = merge_tags(target_tag, source_tags, collection_id)
     return (
         {'message': 'Tags merged successfully.'}
         if success
