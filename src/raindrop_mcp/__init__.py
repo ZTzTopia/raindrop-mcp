@@ -236,15 +236,17 @@ def raindrop_get_raindrops(
                 results.append(raindrop.model_dump(exclude_unset=True, exclude_none=True))
         return results if results else {'error': 'No raindrops found for the provided IDs.'}
 
-    raindrops = get_raindrops(collection_id, search, page, perpage, nested)
-    return (
-        [
+    raindrops_response = get_raindrops(collection_id, search, page, perpage, nested)
+    if not raindrops_response:
+        return {'error': 'No raindrops found.'}
+
+    return {
+        'items': [
             raindrop.model_dump(exclude_unset=True, exclude_none=True)
-            for raindrop in raindrops
-        ]
-        if raindrops
-        else {'error': 'No raindrops found.'}
-    )
+            for raindrop in raindrops_response.items
+        ],
+        'count': raindrops_response.count,
+    }
 
 
 @mcp.tool(

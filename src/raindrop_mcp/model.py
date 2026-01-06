@@ -92,6 +92,7 @@ class RaindropResponse(RaindropBaseModel):
 
 class RaindropsResponse(RaindropBaseModel):
     items: list[RaindropBaseResponse] = []
+    count: int = 0
 
 
 class UpdateDeleteRaindropsResponse(BaseModel):

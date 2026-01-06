@@ -210,7 +210,7 @@ def get_raindrops(
         params['perpage'] = perpage
 
     data = make_request('GET', f'raindrops/{collection_id}', params=params)
-    return RaindropsResponse(**data).items if data else None
+    return RaindropsResponse(**data) if data else None
 
 
 def create_raindrop(raindrop: RaindropCreate):
