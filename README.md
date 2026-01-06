@@ -11,44 +11,81 @@ This project provides a server for integrating with [Raindrop.io](https://raindr
 - Search for raindrops.
 - Manage tags (rename, merge, delete).
 
-### Tools
+## Installation
 
-The server exposes the following tools:
+### Using uv (Recommended)
+
+```bash
+git clone https://github.com/ZTzTopia/raindrop-mcp
+cd raindrop-mcp
+
+uv venv create
+uv venv activate
+uv sync
+```
+
+## Development
+
+To run the server in development mode with hot-reloading and the MCP Inspector:
+
+```bash
+# Run in dev mode using uv
+uv run --with fastmcp fastmcp dev --server-spec src/raindrop_mcp/__init__.py
+```
+
+## Configuration
+
+Add the server to your Claude Desktop configuration file:
+
+**MacOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "raindrop": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/ABSOLUTE/PATH/TO/raindrop-mcp",
+        "run",
+        "raindrop-mcp"
+      ],
+      "env": {
+        "RAINDROP_ACCESS_TOKEN": "YOUR_TEST_TOKEN_HERE"
+      }
+    }
+  }
+}
+```
+
+## Tools
+
+The server exposes the following optimized tools:
 
 - **User Tools**:
   - `raindrop_get_user`: Fetch the current user's information.
 
 - **Groups Tools**:
-  - `raindrop_get_groups`: Get all groups for the current user.
-  - `raindrop_get_group`: Get a specific group by name.
+  - `raindrop_get_groups`: Get all groups or filter by name.
 
 - **Collection Tools**:
-  - `raindrop_get_top_collections`: Get top-level collections.
-  - `raindrop_get_collections`: Get all collections including children.
-  - `raindrop_get_collection`: Fetch a specific collection by ID.
+  - `raindrop_get_collections`: Get all collections or specific ones by ID.
   - `raindrop_create_collection`: Create a new collection.
-  - `raindrop_update_collection`: Update an existing collection.
-  - `raindrop_move_collection`: Move a collection to another collection.
-  - `raindrop_delete_collection`: Delete a specific collection.
-  - `raindrop_delete_collections`: Delete multiple collections.
+  - `raindrop_update_collection`: Update (rename/move) an existing collection.
+  - `raindrop_delete_collections`: Delete collections (single or bulk).
 
 - **Raindrop Tools**:
   - `raindrop_get_total_raindrops`: Get the total number of raindrops for a collection.
-  - `raindrop_get_raindrop`: Fetch a specific raindrop by ID.
-  - `raindrop_get_raindrops`: Get raindrops with search capabilities.
+  - `raindrop_get_raindrops`: Get raindrops by ID or search within a collection.
   - `raindrop_create_raindrop`: Create a new raindrop.
-  - `raindrop_update_raindrop`: Update an existing raindrop.
-  - `raindrop_move_raindrop`: Move a raindrop to another collection.
-  - `raindrop_update_raindrops`: Bulk update raindrops in a collection.
-  - `raindrop_move_raindrops`: Bulk move raindrops to another collection.
-  - `raindrop_delete_raindrop`: Delete a specific raindrop.
-  - `raindrop_delete_raindrops`: Bulk delete raindrops.
+  - `raindrop_update_raindrop`: Update (properties/move) an existing raindrop.
+  - `raindrop_update_raindrops`: Bulk update (properties/move) raindrops.
+  - `raindrop_delete_raindrops`: Delete raindrops (single or bulk).
 
 - **Tag Tools**:
   - `raindrop_get_tags`: Get tags for a collection.
-  - `raindrop_rename_tag`: Rename a tag.
-  - `raindrop_merge_tags`: Merge tags.
-  - `raindrop_delete_tag`: Delete a tag.
+  - `raindrop_update_tags`: Rename or merge tags.
+  - `raindrop_delete_tag`: Delete tags.
 
 ## Acknowledgments
 

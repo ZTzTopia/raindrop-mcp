@@ -199,10 +199,18 @@ def raindrop_delete_collections(
     If `raindrop_ids` is provided, fetches those specific raindrops.
     Otherwise, searches in `collection_id` using `search` term.
 
-    Search examples:
-    apple iphone, Find items that contains such words in title, description, domain or in web page content.
-    "sample", Find items that contains exact phrase in title, description, domain or in web page content.
-    #coffee, Find items that have a certain tag.
+    Search Operators (Advanced):
+    - Search phrase: "exact phrase"
+    - Exclude: -term (e.g. -#coffee)
+    - Any word (OR): match:OR (e.g. apple iphone match:OR)
+    - Tags: #tag, #"multi word tag", notag:true
+    - Fields: title:word, excerpt:word, note:word, link:word
+    - Type: type:[link|article|image|video|document|audio]
+    - Dates: created:2024-01-01, created:>2024-01-01, lastUpdate:2024
+    - Status: ❤️ (favorites), broken:true, duplicate:true
+    - Other: file:true (files), reminder:true (has reminder)
+    
+    For full documentation: https://help.raindrop.io/using-search#operators
     """,
     tags=['Raindrops', 'Bookmarks'],
 )
